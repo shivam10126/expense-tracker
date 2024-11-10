@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useExpenseContext } from '../context/ExpenseContext';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -8,13 +8,7 @@ export default function ExpenditureChart() {
   const [chartType, setChartType] = useState('monthlyOverview');
   const [graphType, setGraphType] = useState('bar');
 
-  useEffect(() => {
-    const entries = getAllEntries();
-    const aggregatedData = aggregateData(entries, chartType);
-    setChartData(aggregatedData);
-  }, [getAllEntries, chartType]);
-
-  const aggregateData = (entries, type) => {
+  const aggregateData = useCallback((entries, type) => {
     const aggregated = {};
 
     switch (type) {
@@ -71,7 +65,13 @@ export default function ExpenditureChart() {
       if (a.month) return new Date(a.month + ' 1, 2024') - new Date(b.month + ' 1, 2024');
       return 0;
     });
-  };
+  }, [expenseCategories, incomeCategories]);
+
+  useEffect(() => {
+    const entries = getAllEntries();
+    const aggregatedData = aggregateData(entries, chartType);
+    setChartData(aggregatedData);
+  }, [getAllEntries, chartType, aggregateData]);
 
   const renderChart = () => {
     const ChartComponent = graphType === 'bar' ? BarChart : LineChart;
