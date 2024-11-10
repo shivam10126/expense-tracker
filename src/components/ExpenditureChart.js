@@ -58,6 +58,9 @@ export default function ExpenditureChart() {
           }
         });
         break;
+
+        default:
+          break;
     }
 
     return Object.values(aggregated).sort((a, b) => {
