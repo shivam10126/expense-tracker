@@ -1,124 +1,147 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useExpenseContext } from '../context/ExpenseContext';
-import { Bar, Line } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  PointElement,
-} from 'chart.js';
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  PointElement
-);
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 export default function ExpenditureChart() {
-  const { entries } = useExpenseContext();
-  const [chartType, setChartType] = useState('daily');
+  const { getAllEntries, incomeCategories, expenseCategories } = useExpenseContext();
+  const [chartData, setChartData] = useState([]);
+  const [chartType, setChartType] = useState('monthlyOverview');
+  const [graphType, setGraphType] = useState('bar');
 
-  const aggregateData = () => {
+  useEffect(() => {
+    const entries = getAllEntries();
+    const aggregatedData = aggregateData(entries, chartType);
+    setChartData(aggregatedData);
+  }, [getAllEntries, chartType]);
+
+  const aggregateData = (entries, type) => {
     const aggregated = {};
 
-    entries.forEach(entry => {
-      let key;
-      if (chartType === 'daily') {
-        key = entry.date.toISOString().split('T')[0];
-      } else if (chartType === 'weekly') {
-        const date = new Date(entry.date);
-        const weekStart = new Date(date.setDate(date.getDate() - date.getDay()));
-        key = weekStart.toISOString().split('T')[0];
-      } else {
-        key = `${entry.date.getFullYear()}-${String(entry.date.getMonth() + 1).padStart(2, '0')}`;
-      }
+    switch (type) {
+      case 'dailyOverview':
+        entries.forEach(entry => {
+          const date = new Date(entry.date).toISOString().split('T')[0];
+          if (!aggregated[date]) {
+            aggregated[date] = { date, income: 0, expense: 0 };
+          }
+          if (entry.type === 'income') {
+            aggregated[date].income += entry.amount;
+          } else {
+            aggregated[date].expense += entry.amount;
+          }
+        });
+        break;
+      case 'monthlyOverview':
+        entries.forEach(entry => {
+          const month = new Date(entry.date).toLocaleString('default', { month: 'long' });
+          if (!aggregated[month]) {
+            aggregated[month] = { month, income: 0, expense: 0 };
+          }
+          if (entry.type === 'income') {
+            aggregated[month].income += entry.amount;
+          } else {
+            aggregated[month].expense += entry.amount;
+          }
+        });
+        break;
+      case 'expenseCategory':
+        expenseCategories.forEach(category => {
+          aggregated[category] = { category, amount: 0 };
+        });
+        entries.forEach(entry => {
+          if (entry.type === 'expenses') {
+            aggregated[entry.category].amount += entry.amount;
+          }
+        });
+        break;
+      case 'incomeCategory':
+        incomeCategories.forEach(category => {
+          aggregated[category] = { category, amount: 0 };
+        });
+        entries.forEach(entry => {
+          if (entry.type === 'income') {
+            aggregated[entry.category].amount += entry.amount;
+          }
+        });
+        break;
+    }
 
-      if (!aggregated[key]) {
-        aggregated[key] = { income: 0, expense: 0 };
-      }
-      aggregated[key][entry.type] += entry.amount;
+    return Object.values(aggregated).sort((a, b) => {
+      if (a.date) return new Date(a.date) - new Date(b.date);
+      if (a.month) return new Date(a.month + ' 1, 2024') - new Date(b.month + ' 1, 2024');
+      return 0;
     });
-
-    return Object.entries(aggregated)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .reduce((acc, [date, data]) => {
-        acc.labels.push(date);
-        acc.income.push(data.income);
-        acc.expense.push(data.expense);
-        return acc;
-      }, { labels: [], income: [], expense: [] });
   };
 
-  const data = aggregateData();
+  const renderChart = () => {
+    const ChartComponent = graphType === 'bar' ? BarChart : LineChart;
+    const DataComponent = graphType === 'bar' ? Bar : Line;
 
-  const barChartData = {
-    labels: data.labels,
-    datasets: [
-      {
-        label: 'Income',
-        data: data.income,
-        backgroundColor: 'rgba(75, 192, 192, 0.6)',
-        borderColor: 'rgba(75, 192, 192, 1)',
-        borderWidth: 1,
-      },
-      {
-        label: 'Expense',
-        data: data.expense,
-        backgroundColor: 'rgba(255, 99, 132, 0.6)',
-        borderColor: 'rgba(255, 99, 132, 1)',
-        borderWidth: 1,
-      },
-    ],
-  };
-
-  const lineChartData = {
-    labels: data.labels,
-    datasets: [
-      {
-        label: 'Balance',
-        data: data.income.map((income, index) => income - data.expense[index]),
-        backgroundColor: 'rgba(153, 102, 255, 0.6)',
-        borderColor: 'rgba(153, 102, 255, 1)',
-        borderWidth: 2,
-      },
-    ],
+    return (
+      <ResponsiveContainer width="100%" height={400}>
+        <ChartComponent data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis 
+            dataKey={chartType === 'dailyOverview' ? 'date' : chartType === 'monthlyOverview' ? 'month' : 'category'} 
+            tickFormatter={chartType === 'dailyOverview' ? (tick) => new Date(tick).toLocaleDateString() : undefined}
+          />
+          <YAxis />
+          <Tooltip labelFormatter={chartType === 'dailyOverview' ? (label) => new Date(label).toLocaleDateString() : undefined} />
+          <Legend />
+          {(chartType === 'monthlyOverview' || chartType === 'dailyOverview') ? (
+            <>
+              <DataComponent dataKey="income" fill="#4CAF50" stroke="#4CAF50" name="Income" />
+              <DataComponent dataKey="expense" fill="#F44336" stroke="#F44336" name="Expense" />
+            </>
+          ) : (
+            <DataComponent dataKey="amount" fill="#2196F3" stroke="#2196F3" name="Amount" />
+          )}
+        </ChartComponent>
+      </ResponsiveContainer>
+    );
   };
 
   return (
-    <div className="mt-8">
-      <h2 className="text-2xl font-bold mb-4">Expenditure Charts</h2>
-      <div className="mb-4">
-        <label className="mr-2">View:</label>
+    <div className="w-full space-y-4">
+      <div className="flex justify-between items-center">
         <select
+          className="p-2 border rounded-md"
           value={chartType}
           onChange={(e) => setChartType(e.target.value)}
-          className="p-2 border rounded"
         >
-          <option value="daily">Daily</option>
-          <option value="weekly">Weekly</option>
-          <option value="monthly">Monthly</option>
+          <option value="dailyOverview">Daily Overview</option>
+          <option value="monthlyOverview">Monthly Overview</option>
+          <option value="expenseCategory">Expense by Category</option>
+          <option value="incomeCategory">Income by Category</option>
         </select>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div>
-          <h3 className="text-xl font-semibold mb-2">Income vs Expenses</h3>
-          <Bar data={barChartData} />
+
+        <div className="flex space-x-4">
+          <label className="inline-flex items-center">
+            <input
+              type="radio"
+              className="form-radio"
+              name="graphType"
+              value="bar"
+              checked={graphType === 'bar'}
+              onChange={() => setGraphType('bar')}
+            />
+            <span className="ml-2">Bar</span>
+          </label>
+          <label className="inline-flex items-center">
+            <input
+              type="radio"
+              className="form-radio"
+              name="graphType"
+              value="line"
+              checked={graphType === 'line'}
+              onChange={() => setGraphType('line')}
+            />
+            <span className="ml-2">Line</span>
+          </label>
         </div>
-        <div>
-          <h3 className="text-xl font-semibold mb-2">Balance Trend</h3>
-          <Line data={lineChartData} />
-        </div>
       </div>
+
+      {renderChart()}
     </div>
   );
 }

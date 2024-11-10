@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
 import { useExpenseContext } from '../context/ExpenseContext';
-import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
 
-export default function AddExpenseForm() {
-  const { addEntry } = useExpenseContext();
+export default function AddExpenseForm({ onSuccess, initialType = 'expense' }) {
+  const { addEntry, incomeCategories, expenseCategories } = useExpenseContext();
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
-  const [type, setType] = useState('expense');
-  const [date, setDate] = useState(new Date());
+  const [type, setType] = useState(initialType);
+  const [date, setDate] = useState(new Date().toISOString().substr(0, 10));
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -26,8 +24,10 @@ export default function AddExpenseForm() {
     setAmount('');
     setDescription('');
     setCategory('');
-    setType('expense');
-    setDate(new Date());
+    setType(initialType);
+    setDate(new Date().toISOString().substr(0, 10));
+
+    if (onSuccess) onSuccess();
   };
 
   return (
@@ -39,7 +39,7 @@ export default function AddExpenseForm() {
           id="amount"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
           required
         />
       </div>
@@ -50,7 +50,7 @@ export default function AddExpenseForm() {
           id="description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
           required
         />
       </div>
@@ -60,15 +60,13 @@ export default function AddExpenseForm() {
           id="category"
           value={category}
           onChange={(e) => setCategory(e.target.value)}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
           required
         >
           <option value="">Select a category</option>
-          <option value="Food">Food</option>
-          <option value="Transport">Transport</option>
-          <option value="Entertainment">Entertainment</option>
-          <option value="Utilities">Utilities</option>
-          <option value="Other">Other</option>
+          {(type === 'income' ? incomeCategories : expenseCategories).map((cat) => (
+            <option key={cat} value={cat}>{cat}</option>
+          ))}
         </select>
       </div>
       <div>
@@ -99,18 +97,24 @@ export default function AddExpenseForm() {
         </div>
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700">Date</label>
-        <DatePicker
-          selected={date}
-          onChange={(date) => setDate(date)}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+        <label htmlFor="date" className="block text-sm font-medium text-gray-700">Date</label>
+        <input
+          type="date"
+          id="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
         />
       </div>
       <button
         type="submit"
-        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+          type === 'expense' 
+            ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500' 
+            : 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
+        } focus:outline-none focus:ring-2 focus:ring-offset-2`}
       >
-        Add Entry
+        Add {type === 'expense' ? 'Expense' : 'Income'}
       </button>
     </form>
   );

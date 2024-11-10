@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useExpenseContext } from '../context/ExpenseContext';
-import DatePicker from 'react-datepicker';
 
 export default function ExpenseItem({ entry }) {
   const { deleteEntry, editEntry } = useExpenseContext();
@@ -8,8 +7,12 @@ export default function ExpenseItem({ entry }) {
   const [editedEntry, setEditedEntry] = useState(entry);
 
   const handleEdit = () => {
-    editEntry(entry.id, editedEntry);
+    editEntry(entry.type, entry.month, entry.index, editedEntry);
     setIsEditing(false);
+  };
+
+  const handleDelete = () => {
+    deleteEntry(entry.type, entry.month, entry.index);
   };
 
   if (isEditing) {
@@ -32,23 +35,28 @@ export default function ExpenseItem({ entry }) {
           onChange={(e) => setEditedEntry({ ...editedEntry, category: e.target.value })}
           className="w-full mb-2 p-2 border rounded"
         >
-          <option value="Food">Food</option>
-          <option value="Transport">Transport</option>
-          <option value="Entertainment">Entertainment</option>
-          <option value="Utilities">Utilities</option>
-          <option value="Other">Other</option>
+          {entry.type === 'income' ? (
+            <>
+              <option value="Salary">Salary</option>
+              <option value="Freelance">Freelance</option>
+              <option value="Investments">Investments</option>
+              <option value="Rental Income">Rental Income</option>
+            </>
+          ) : (
+            <>
+              <option value="Food">Food</option>
+              <option value="Transportation">Transportation</option>
+              <option value="Entertainment">Entertainment</option>
+              <option value="Utilities">Utilities</option>
+              <option value="Rent">Rent</option>
+              <option value="Healthcare">Healthcare</option>
+            </>
+          )}
         </select>
-        <select
-          value={editedEntry.type}
-          onChange={(e) => setEditedEntry({ ...editedEntry, type: e.target.value })}
-          className="w-full mb-2 p-2 border rounded"
-        >
-          <option value="expense">Expense</option>
-          <option value="income">Income</option>
-        </select>
-        <DatePicker
-          selected={editedEntry.date}
-          onChange={(date) => setEditedEntry({ ...editedEntry, date })}
+        <input
+          type="date"
+          value={editedEntry.date}
+          onChange={(e) => setEditedEntry({ ...editedEntry, date: e.target.value })}
           className="w-full mb-2 p-2 border rounded"
         />
         <div className="flex justify-end space-x-2">
@@ -70,12 +78,12 @@ export default function ExpenseItem({ entry }) {
           <p className={`text-lg font-bold ${entry.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
             ${entry.amount.toFixed(2)}
           </p>
-          <p className="text-sm text-gray-500">{entry.date.toLocaleDateString()}</p>
+          <p className="text-sm text-gray-500">{new Date(entry.date).toLocaleDateString()}</p>
         </div>
       </div>
       <div className="mt-4 flex justify-end space-x-2">
         <button onClick={() => setIsEditing(true)} className="text-blue-500 hover:text-blue-700">Edit</button>
-        <button onClick={() => deleteEntry(entry.id)} className="text-red-500 hover:text-red-700">Delete</button>
+        <button onClick={handleDelete} className="text-red-500 hover:text-red-700">Delete</button>
       </div>
     </div>
   );
